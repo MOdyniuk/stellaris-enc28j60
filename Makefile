@@ -1,71 +1,142 @@
+# Configurable variables
 
-CXX=arm-none-eabi-g++
-CC=arm-none-eabi-gcc
-OBJCOPY=arm-none-eabi-objcopy
+# Compiler setup
+CC_PREFIX=arm-none-eabi-
+CXX=$(CC_PREFIX)g++
+CC=$(CC_PREFIX)gcc
+OBJCOPY=$(CC_PREFIX)objcopy
+SIZE=$(CC_PREFIX)size
 
-CPU=-mcpu=cortex-m4 -mthumb -mfpu=fpv4-sp-d16 -mfloat-abi=softfp
-
-CFLAGS=$(CPU) -ffunction-sections -fdata-sections
+# Build directory
+BUILD_DIR=build/
 
 STELLARIS=$(HOME)/opt/stellaris-launchpad
 UIP_DIR=uip-1.0
 
-INCLUDES=-I$(STELLARIS) -Iuip-1.0 -I. -I uip-1.0/uip
+# Base name of the binary targets (.elf, .bin)
+TARGET_NAME=enc28j60
+
+# Target CPU configuration
+CPU=-mcpu=cortex-m4 -mthumb -mfpu=fpv4-sp-d16 -mfloat-abi=softfp
+LINKER_SCRIPT=LM4F.ld
+# Used to give some useful statistics after linking
+FLASH_SIZE=262144
+RAM_SIZE=32768
+
+# Common C/C++ compiler flags
+COMMON_FLAGS=$(CPU) -ffunction-sections -fdata-sections -Os 
+
+# C/C++ pre-processor defines and include paths
 DEFINES=-DTARGET_IS_BLIZZARD_RA2 -DPART_LM4F120H5QR -DUART_BUFFERED 
-CXXFLAGS=$(CFLAGS) -fno-rtti -fno-exceptions 
-BUILD_DIR=build/
-LDFLAGS=-nodefaultlibs -TLM4F.ld 
+INCLUDES=-I$(STELLARIS) -Iuip-1.0 -I. -I uip-1.0/uip
+
+# C++ compiler specific flags
+CXXFLAGS=-fno-rtti -fno-exceptions 
+
+# C compiler specific flags
+CFLAGS=--std=gnu99
+
+# Linker flags
+LDFLAGS=-nodefaultlibs -T$(LINKER_SCRIPT)
+
+# Libraries to link against
 LIBS=-lm -lc -lgcc
 
-VPATH += $(UIP_DIR)/uip
-VPATH += $(UIP_DIR)/apps/dhcpc
+# We need to extend VPATH in order to be able to 
+# find the source files which are located in deep paths
+SRC_DIRS += $(UIP_DIR)/uip
+SRC_DIRS += $(UIP_DIR)/apps/dhcpc
 
 UIP_SRCS=$(UIP_DIR)/uip/uip.c \
 	 $(UIP_DIR)/uip/uip_timer.c \
 	 $(UIP_DIR)/uip/psock.c \
 	 $(UIP_DIR)/uip/uip_arp.c \
-	 $(UIP_DIR)/uip/uip_timer.c \
 	 $(UIP_DIR)/apps/dhcpc/dhcpc.c
 
+# C++ source code files
 CXX_SRCS=main.cpp enc28j60.cpp
-C_SRCS=dummyfuncs.c $(UIP_SRCS) httpd.c
-#_CXX_SRCS=$(wildcard $(patsubst %, %/*.cpp, .))
 
+# C source code
+C_SRCS=dummyfuncs.c \
+	startup_gcc.c \
+	$(UIP_SRCS) \
+	httpd.c
+
+# End of configuriable variables
+
+SHELL=bash
 SRCS=$(CXX_SRCS) $(C_SRCS)
-OBJS=$(addprefix $(BUILD_DIR), $(notdir $(CXX_SRCS:.cpp=.o)) $(notdir $(C_SRCS:.c=.o)))
+OBJS=$(addprefix $(BUILD_DIR), $(notdir $(CXX_SRCS:.cpp=.o)) $(C_SRCS:.c=.o))
 DEPS=$(OBJS:.o=.d)
 
-TARGET_NAME=enc28j60
 TARGET_ELF=$(BUILD_DIR)$(TARGET_NAME).elf
 TARGET_BIN=$(BUILD_DIR)$(TARGET_NAME).bin
 
 GCC_DEP_GEN=-MD -MP -MF $(BUILD_DIR)$(@F:.o=.d)
 
-_CXXFLAGS=$(CXXFLAGS) $(GCC_DEP_GEN) $(DEFINES) $(INCLUDES)
-_CFLAGS=$(CFLAGS) $(GCC_DEP_GEN) $(DEFINES) $(INCLUDES)
+_CXXFLAGS=$(COMMON_FLAGS) $(CXXFLAGS) $(GCC_DEP_GEN) $(DEFINES) $(INCLUDES)
+_CFLAGS=$(COMMON_FLAGS) $(CFLAGS) $(GCC_DEP_GEN) $(DEFINES) $(INCLUDES)
 
-.PHONY: $(BUILD_DIR)
+BUILD_DIRS=$(sort $(dir $(OBJS)))
 
-all: $(BUILD_DIR) $(TARGET_BIN)
+define print-memory-usage
+FLASH_USAGE=$$($(SIZE) $@ | tail -1 | cut -f 1 | tr -d ' '); \
+DATA_USAGE=$$($(SIZE) $@ | tail -1 | cut -f 2 | tr -d ' '); \
+BSS_USAGE=$$($(SIZE) $@ | tail -1 | cut -f 3 | tr -d ' '); \
+let "FLASH_P=$$FLASH_USAGE*100 / $(FLASH_SIZE)"; \
+let "RAM_USAGE=$$DATA_USAGE+$$BSS_USAGE"; \
+let "RAM_P=$$RAM_USAGE*100 / $(RAM_SIZE)"; \
+printf "Flash usage     : %6dB / %6dB = %2d%%\n" "$$FLASH_USAGE" "$(FLASH_SIZE)" "$$FLASH_P"; \
+printf "Static RAM usage: %6dB / %6dB = %2d%%\n" "$$RAM_USAGE" "$(RAM_SIZE)" "$$RAM_P"
+endef
+
+.PHONY: print-config
+
+all: print-config $(BUILD_DIR) $(TARGET_BIN)
+
+print-config:
+	@echo "SETTINGS:"
+	@echo "---------"
+	@echo "Compiler prefix: $(CC_PREFIX)"
+	@echo "Commong flags  : $(COMMON_FLAGS)"
+	@echo "C   flags      : $(CFLAGS)"
+	@echo "C++ flags      : $(CXXFLAGS)"
+	@echo
+
+print-config-verbose: print-config
+	@echo $(OBJS)
+	@echo $(BUILD_DIRS)
+
+$(OBJS): Makefile
 
 $(BUILD_DIR): 
-	echo $(OBJS)
-	@mkdir -p $(BUILD_DIR)
+	@mkdir -p $(BUILD_DIRS)
 
-$(TARGET_ELF): $(OBJS)
-	$(CXX) $(LDFLAGS) $? -o $@ $(LIBS)
+$(TARGET_ELF): $(OBJS) $(LINKER_SCRIPT)
+	@echo "Linking $@"
+	@$(CXX) $(LDFLAGS) $(OBJS) -o $@ $(LIBS)
+	@echo 
+	@$(print-memory-usage)
+	@echo
 
 $(TARGET_BIN): $(TARGET_ELF)
-	$(OBJCOPY) -O binary $(TARGET_ELF) $(TARGET_BIN)
+	@echo "$(TARGET_ELF) -> $(TARGET_BIN)"
+	@$(OBJCOPY) -O binary $(TARGET_ELF) $(TARGET_BIN)
 
 clean:
-	@rm -f $(OBJS) $(TARGET_ELF) $(TARGET_BIN)
+	@echo "Removing '$(BUILD_DIR)'"
+	@rm -rf $(BUILD_DIR)
 
 $(BUILD_DIR)%.o: %.cpp
-	$(CXX) -c $(_CXXFLAGS) $< -o $@
+	@echo "C++ compiling '$<'"
+	@echo "        -> $@"
+	@$(CXX) -c $(_CXXFLAGS) $< -o $@
+	@echo
 
 $(BUILD_DIR)%.o: %.c
-	$(CC) -c $(_CFLAGS) $< -o $@ 
-
+	@echo "C   compiling '$<'"
+	@echo "        -> $@"
+	@$(CC) -c $(_CFLAGS) $< -o $@ 
+	@echo
 
 -include $(DEPS)
