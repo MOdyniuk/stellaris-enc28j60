@@ -13,6 +13,9 @@ BUILD_DIR=build/
 STELLARIS=$(HOME)/opt/stellaris-launchpad
 UIP_DIR=uip-1.0
 
+# Flash setup
+LM4FLASH=$(STELLARIS)/lm4flash
+
 # Base name of the binary targets (.elf, .bin)
 TARGET_NAME=enc28j60
 
@@ -27,7 +30,7 @@ RAM_SIZE=32768
 COMMON_FLAGS=$(CPU) -ffunction-sections -fdata-sections -Os 
 
 # C/C++ pre-processor defines and include paths
-DEFINES=-DTARGET_IS_BLIZZARD_RA2 -DPART_LM4F120H5QR -DUART_BUFFERED 
+DEFINES=$(DEFS) -DTARGET_IS_BLIZZARD_RA2 -DPART_LM4F120H5QR -DUART_BUFFERED -D_DEBUG
 INCLUDES=-I$(STELLARIS) -Iuip-1.0 -I. -I uip-1.0/uip
 
 # C++ compiler specific flags
@@ -37,10 +40,10 @@ CXXFLAGS=-fno-rtti -fno-exceptions
 CFLAGS=--std=gnu99
 
 # Linker flags
-LDFLAGS=-nodefaultlibs -T$(LINKER_SCRIPT)
+LDFLAGS=$(CPU) -nodefaultlibs -T$(LINKER_SCRIPT)
 
 # Libraries to link against
-LIBS=-lm -lc -lgcc
+LIBS=-lm -lc
 
 # We need to extend VPATH in order to be able to 
 # find the source files which are located in deep paths
@@ -94,11 +97,16 @@ endef
 
 all: print-config $(BUILD_DIR) $(TARGET_BIN)
 
+load: $(TARGET_BIN)
+	@echo "Flashing $(TARGET_BIN) to target"
+	$(LM4FLASH) $(TARGET_BIN)
+
 print-config:
 	@echo "SETTINGS:"
 	@echo "---------"
 	@echo "Compiler prefix: $(CC_PREFIX)"
 	@echo "Commong flags  : $(COMMON_FLAGS)"
+	@echo "Defines        : $(DEFINES)"
 	@echo "C   flags      : $(CFLAGS)"
 	@echo "C++ flags      : $(CXXFLAGS)"
 	@echo
@@ -114,7 +122,7 @@ $(BUILD_DIR):
 
 $(TARGET_ELF): $(OBJS) $(LINKER_SCRIPT)
 	@echo "Linking $@"
-	@$(CXX) $(LDFLAGS) $(OBJS) -o $@ $(LIBS)
+	$(CXX) $(LDFLAGS) $(OBJS) -o $@ $(LIBS)
 	@echo 
 	@$(print-memory-usage)
 	@echo
