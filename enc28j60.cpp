@@ -192,7 +192,7 @@ namespace ENCJ_STELLARIS
 
 #ifdef _DEBUG
 		uint8_t mc[6] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
-		enc_get_mac_addr(mc);
+		GetMACAddress(mc);
 		printf("Mac addr set to: %x:%x:%x:%x:%x:%x\n", mc[0], mc[1], mc[2],
 			mc[3], mc[4], mc[5]);
 #endif
