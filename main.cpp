@@ -1,6 +1,13 @@
 #include "common.h"
 #include <driverlib/systick.h>
+
+#ifdef __cplusplus 
+extern "C" {
+#endif
 #include "utils/uartstdio.c"
+#ifdef __cplusplus 
+}
+#endif
 
 #include "enc28j60.h"
 
@@ -245,6 +252,9 @@ void dhcpc_configured(const struct dhcpc_state *s)
 		s->ipaddr[1] & 0xff, s->ipaddr[1] >> 8);
 }
 
+#ifdef __cplusplus
+extern "C" {
+#endif
 void SysTickIntHandler(void)
 {
 	//
@@ -258,8 +268,14 @@ void SysTickIntHandler(void)
 	HWREGBITW(&g_ulFlags, FLAG_SYSTICK) = 1;
 	//g_ulFlags |= FLAG_SYSTICK;
 }
+#ifdef __cplusplus
+}
+#endif
 
 // Handle interrupts from the INT pin
+#ifdef __cplusplus
+extern "C" {
+#endif
 void GPIOPortEIntHandler(void) {
 	uint8_t p = MAP_GPIOPinIntStatus(GPIO_PORTE_BASE, true) & 0xFF;
 
@@ -267,6 +283,9 @@ void GPIOPortEIntHandler(void) {
 
 	HWREGBITW(&g_ulFlags, FLAG_ENC_INT) = 1;
 }
+#ifdef __cplusplus
+}
+#endif
 
 // Used in uip_timer.c
 clock_time_t clock_time(void)
