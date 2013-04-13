@@ -20,8 +20,10 @@ volatile unsigned long g_ulTickCounter = 0;
 #define SYSTICKHZ		CLOCK_CONF_SECOND
 #define SYSTICKMS		(1000 / SYSTICKHZ)
 
+extern "C" {
 void uip_log(char *msg) {
 	printf("UIP: %s\n", msg);
+}
 }
 
 
@@ -91,7 +93,7 @@ int main(void) {
 	printf("Welcome\n");
 
 	// One line config! Woo!
-	static ENCJ_STELLARIS::ENC28J60 chip(mac_addr);
+	ENCJ_STELLARIS::ENC28J60 chip(mac_addr);
 
 	printf("ENC28J60 online\n");
 

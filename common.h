@@ -19,8 +19,14 @@
 #include <utils/uartstdio.h>
 #include <utils/ustdlib.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
 #include <uip/uip.h>
 #include <uip/uip_arp.h>
+#ifdef __cplusplus
+}
+#endif
 
 #define printf		UARTprintf
 
