@@ -66,10 +66,6 @@ const uint8_t mac_addr[] = { 0x00, 0xC0, 0x033, 0x38, 0x22, 0xA4 };
 
 #endif
 
-
-
-
-
 static void cpu_init(void) {
 	// A safety loop in order to interrupt the MCU before setting the clock (wrongly)
 	int i;
@@ -91,6 +87,91 @@ static void uart_init(void) {
 }
 
 
+class StellarisBusDriver : public ENCJ_STELLARIS::BusDriver {
+private:
+	/* SPI Pin Configuration */
+	static const int SPI_PORT_BASE		= GPIO_PORTB_BASE;
+	static const int SPI_SSI_BASE		= SSI2_BASE;
+	static const int SPI_PORT_PERIPHERAL 	= SYSCTL_PERIPH_GPIOB;
+	static const int SPI_SSI_PERIPHERAL  	= SYSCTL_PERIPH_SSI2;
+	static const int SPI_SSI_RX_CONF	= GPIO_PB6_SSI2RX;
+	static const int SPI_SSI_TX_CONF	= GPIO_PB7_SSI2TX;
+	static const int SPI_SSI_CLK_CONF	= GPIO_PB4_SSI2CLK;
+	static const int SPI_SSI_RX_PIN		= GPIO_PIN_6;
+	static const int SPI_SSI_TX_PIN		= GPIO_PIN_7;
+	static const int SPI_SSI_CLK_PIN	= GPIO_PIN_4;
+
+	/* GPIO Pin Configuration */
+	static const int PIN_CHIP_SELECT_PERIPH = SYSCTL_PERIPH_GPIOB;
+	static const int PIN_CHIP_SELECT_BASE	= GPIO_PORTB_BASE;
+	static const int PIN_CHIP_SELECT	= GPIO_PIN_5;
+
+	static const int PIN_INT_PERIPH		= SYSCTL_PERIPH_GPIOE;
+	static const int PIN_INT_BASE		= GPIO_PORTE_BASE;
+	static const int PIN_INT		= GPIO_PIN_4;
+	static const int PIN_INT_INT		= INT_GPIOE;
+	
+public:
+	/* BusDriver interface implementations */
+	void 	ChipSelect(uint8_t driverId) {
+		MAP_GPIOPinWrite(PIN_CHIP_SELECT_BASE, PIN_CHIP_SELECT, 0);
+	}
+
+	void 	ChipDeSelect(uint8_t driverId) {
+		MAP_GPIOPinWrite(PIN_CHIP_SELECT_BASE, PIN_CHIP_SELECT, PIN_CHIP_SELECT);
+	}
+
+	uint8_t SpiSend(uint8_t driverId, uint8_t msg) {
+		unsigned long val;
+		MAP_SSIDataPut(SPI_SSI_BASE, msg);
+		MAP_SSIDataGet(SPI_SSI_BASE, &val);
+		return (uint8_t)val;
+	}
+
+	void	PinSet(uint8_t driverId, ENCJ_STELLARIS::PinType pin, ENCJ_STELLARIS::PinValue value) {
+	}
+
+	/* Initialization code which is not part of the interface */
+	void	SpiInit() {
+		// Configure SSI2 for ENC28J60 usage
+		// GPIO_PB4 is CLK
+		// GPIO_PB6 is RX
+		// GPIO_PB7 is TX
+		MAP_SysCtlPeripheralEnable(SPI_PORT_PERIPHERAL);
+		MAP_SysCtlPeripheralEnable(SPI_SSI_PERIPHERAL);
+		MAP_GPIOPinConfigure(SPI_SSI_CLK_CONF);
+		MAP_GPIOPinConfigure(SPI_SSI_RX_CONF);
+		MAP_GPIOPinConfigure(SPI_SSI_TX_CONF);
+		MAP_GPIOPinTypeSSI(SPI_PORT_BASE, SPI_SSI_CLK_PIN | SPI_SSI_TX_PIN | SPI_SSI_RX_PIN);
+		MAP_SSIConfigSetExpClk(SPI_SSI_BASE, MAP_SysCtlClockGet(), SSI_FRF_MOTO_MODE_0,
+				SSI_MODE_MASTER, 1000000, 8);
+		MAP_SSIEnable(SPI_SSI_BASE);
+
+		unsigned long b;
+		while(MAP_SSIDataGetNonBlocking(SSI2_BASE, &b)) {}
+	}
+
+	void InitPins() {
+		MAP_SysCtlPeripheralEnable(PIN_CHIP_SELECT_PERIPH);
+		MAP_SysCtlPeripheralEnable(PIN_INT_PERIPH);
+		MAP_GPIOPinTypeGPIOOutput(PIN_CHIP_SELECT_BASE, PIN_CHIP_SELECT);
+
+		MAP_GPIOPinTypeGPIOInput(PIN_INT_BASE, PIN_INT);
+
+		MAP_GPIOPinWrite(PIN_CHIP_SELECT_BASE, PIN_CHIP_SELECT, PIN_CHIP_SELECT);
+		MAP_IntEnable(PIN_INT_INT);
+
+		MAP_GPIOIntTypeSet(PIN_INT_BASE, PIN_INT, GPIO_FALLING_EDGE);
+		MAP_GPIOPinIntClear(PIN_INT_BASE, PIN_INT);
+		MAP_GPIOPinIntEnable(PIN_INT_BASE, PIN_INT);
+	}
+
+	void Init() {
+		InitPins();
+		SpiInit();
+	}
+};
+
 int main(void) {
 	static struct uip_eth_addr eth_addr;
 	uip_ipaddr_t ipaddr;
@@ -99,8 +180,10 @@ int main(void) {
 	uart_init();
 	printf("Welcome\n");
 
+	StellarisBusDriver busDriver;
+	busDriver.Init();
 	// One line config! Woo!
-	ENCJ_STELLARIS::ENC28J60 chip(mac_addr);
+	ENCJ_STELLARIS::ENC28J60 chip(mac_addr, 0, busDriver);
 
 	printf("ENC28J60 online\n");
 

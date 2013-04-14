@@ -29,60 +29,15 @@
 namespace ENCJ_STELLARIS
 {
 
-	ENC28J60::ENC28J60
-		( const uint8_t *mac
-		, uint32_t CSport
-		, uint32_t CSpin
-		, uint32_t CSperiph
-		, uint32_t INTport
-		, uint32_t INTpin
-		, uint32_t INTperiph
-		, uint32_t INTassign
-		, uint32_t RESETport
-		, uint32_t RESETpin
-		, uint32_t RESETperiph
-		, uint32_t SSIbase
-		, uint32_t SSIperiph
-		, uint32_t SSIGPIOperiph
-		, uint32_t SSIGPIOport
-		, uint32_t SSIGPIOpins
-		, uint32_t SSICLK
-		, uint32_t SSIRX
-		, uint32_t SSITX
-		)
+	ENC28J60::ENC28J60( const uint8_t *mac, uint8_t driverId, BusDriver &busDriver)
+		: driverId(driverId), busDriver(busDriver)
 	{
-		this->InitSPI
-			( SSIbase
-			, SSIperiph
-			, SSIGPIOperiph
-			, SSIGPIOport
-			, SSIGPIOpins
-			, SSICLK
-			, SSIRX
-			, SSITX
-			);
-
-		this->InitPort
-			( CSport
-			, CSpin
-			, CSperiph
-			, INTport
-			, INTpin
-			, INTperiph
-			, RESETport
-			, RESETpin
-			, RESETperiph
-			);
-
 		this->InitConfig(mac);
+	}
 
-		this->InitInterrupt
-			( INTport
-			, INTpin
-			, INTassign
-			);
-
-
+	uint8_t
+	ENC28J60::SPISend(uint8_t msg) {
+		return busDriver.SpiSend(driverId, msg);
 	}
 
 	/**
@@ -198,113 +153,6 @@ namespace ENCJ_STELLARIS
 #endif
 
 	}
-
-
-	/**
-	 * Enable the SSI connection for SPI to the ENC chip
-	 *
-	 * @param SSIbase is the only value we care about after this initialization
-	 *  and as such it is stored in the object for later use in the SPISend
-	 *  function.
-	 */
-	void ENC28J60::InitSPI
-		( uint32_t SSIbase
-		, uint32_t SSIperiph
-		, uint32_t SSIGPIOperiph
-		, uint32_t SSIGPIOport
-		, uint32_t SSIGPIOpins
-		, uint32_t SSICLK
-		, uint32_t SSIRX
-		, uint32_t SSITX
-		)
-	{
-		MAP_SysCtlPeripheralEnable(SSIGPIOperiph);
-		MAP_SysCtlPeripheralEnable(SSIperiph);
-
-		MAP_GPIOPinConfigure(SSICLK);
-		MAP_GPIOPinConfigure(SSIRX);
-		MAP_GPIOPinConfigure(SSITX);
-		MAP_GPIOPinTypeSSI(SSIGPIOport, SSIGPIOpins);
-
-		MAP_SSIConfigSetExpClk
-			( SSIbase
-			, MAP_SysCtlClockGet()
-			, SSI_FRF_MOTO_MODE_0
-			, SSI_MODE_MASTER
-			, 1000000
-			, 8
-			);
-
-		MAP_SSIEnable(SSIbase);
-		this->SSIbase = SSIbase;
-
-		// Make sure the SSI FIFO is empty?
-		unsigned long b;
-		while(MAP_SSIDataGetNonBlocking(this->SSIbase, &b)) {}
-	}
-
-	/**
-	 * Initialize all of the ports and pins that the ENC will use
-	 *
-	 * We care about the ports and pins for each one so that we may call them
-	 * later on, so those are stored for later use
-	 */
-	void ENC28J60::InitPort
-		( uint32_t CSport
-		, uint32_t CSpin
-		, uint32_t CSperiph
-		, uint32_t INTport
-		, uint32_t INTpin
-		, uint32_t INTperiph
-		, uint32_t RESETport
-		, uint32_t RESETpin
-		, uint32_t RESETperiph
-		)
-	{
-		// CSport/pin
-		MAP_SysCtlPeripheralEnable(CSport);
-		MAP_GPIOPinTypeGPIOOutput(CSport, CSpin);
-		this->CSpin = CSpin;
-		this->CSport = CSport;
-
-		// INTport/pin
-		MAP_SysCtlPeripheralEnable(INTperiph);
-		MAP_GPIOPinTypeGPIOOutput(INTport, INTpin);
-		this->INTpin = INTpin;
-		this->INTport = INTport;
-
-		// RESETport/pin
-		MAP_SysCtlPeripheralEnable(RESETperiph);
-		MAP_GPIOPinTypeGPIOOutput(RESETport, RESETpin);
-		this->INTpin = RESETpin;
-		this->RESETport = RESETport;
-
-		// Bring CS high
-		MAP_GPIOPinWrite(this->CSport, this->CSpin, this->CSpin);
-	}
-
-	/**
-	 * Enable the processor interrupt for the INT pin
-	 *
-	 */
-	void ENC28J60::InitInterrupt
-		( uint32_t INTport
-		, uint32_t INTpin
-		, uint32_t INTassign
-		)
-	{
-		MAP_IntEnable(INTassign);
-		MAP_IntMasterEnable();
-
-		// Disable sleep interrupts (power saving?)
-		MAP_SysCtlPeripheralClockGating(false);
-
-		MAP_GPIOIntTypeSet(INTport, INTpin, GPIO_FALLING_EDGE);
-		MAP_GPIOPinIntClear(INTport, INTpin);
-		MAP_GPIOPinIntEnable(INTport, INTpin);
-
-	}
-
 
 	/**
 	 * Handle a packet recieved interrupt request from the ENC
@@ -445,7 +293,7 @@ namespace ENCJ_STELLARIS
 		WRITE_REG(ENC_ERDPTH, txEnd >> 8);
 		this->RBM(status, 7);
 
-		//uint16_t transmit_count = status[0] | (status[1] << 8);
+		uint16_t transmit_count = status[0] | (status[1] << 8);
 
 		bool retStatus = false;
 		if (status[2] & 0x80)
@@ -467,36 +315,23 @@ namespace ENCJ_STELLARIS
 	 */
 	void ENC28J60::Reset()
 	{
-		MAP_GPIOPinWrite(this->RESETport, this->RESETpin, 0);
+		//MAP_GPIOPinWrite(this->RESETport, this->RESETpin, 0);
+		busDriver.ChipSelect(driverId);
 
 		this->SPISend(0xFF);
 
-		MAP_GPIOPinWrite(this->RESETport, this->RESETpin, this->RESETpin);
+		//MAP_GPIOPinWrite(this->RESETport, this->RESETpin, this->RESETpin);
+		busDriver.ChipDeSelect(driverId);
 	}
-
-
-
-	/**
-	 * Send an SPI value and return the result
-	 */
-	uint8_t ENC28J60::SPISend(uint8_t msg)
-	{
-		unsigned long val;
-		MAP_SSIDataPut(this->SSIbase, msg);
-		MAP_SSIDataGet(this->SSIbase, &val);
-		return (uint8_t)val;
-	}
-
-
 
 	// Read Control Register
 	uint8_t ENC28J60::RCR(uint8_t reg)
 	{
-		MAP_GPIOPinWrite(this->CSport, this->CSpin, 0);
+		busDriver.ChipSelect(driverId);
 		this->SPISend(reg);
 		uint8_t b = SPISend(0xFF);
 
-		MAP_GPIOPinWrite(this->CSport, this->CSpin, this->CSpin);
+		busDriver.ChipDeSelect(driverId);
 		return b;
 	}
 
@@ -508,11 +343,11 @@ namespace ENCJ_STELLARIS
 	 */
 	uint8_t ENC28J60::RCRM(uint8_t reg)
 	{
-		MAP_GPIOPinWrite(this->CSport, this->CSpin, 0);
+		busDriver.ChipSelect(driverId);
 		this->SPISend(reg);
 		this->SPISend(0xFF);
 		uint8_t b = this->SPISend(0xFF);
-		MAP_GPIOPinWrite(this->CSport, this->CSpin, this->CSpin);
+		busDriver.ChipDeSelect(driverId);
 
 		return b;
 	}
@@ -520,36 +355,36 @@ namespace ENCJ_STELLARIS
 	// Write Control Register
 	void ENC28J60::WCR(uint8_t reg, uint8_t val)
 	{
-		MAP_GPIOPinWrite(this->CSport, this->CSpin, 0);
+		busDriver.ChipSelect(driverId);
 		this->SPISend(0x40 | reg);
 		this->SPISend(val);
-		MAP_GPIOPinWrite(this->CSport, this->CSpin, this->CSpin);
+		busDriver.ChipDeSelect(driverId);
 	}
 
 	// Read Buffer Memory
 	void ENC28J60::RBM(uint8_t *buf, uint16_t len)
 	{
-		MAP_GPIOPinWrite(this->CSport, this->CSpin, 0);
+		busDriver.ChipSelect(driverId);
 		this->SPISend(0x20 | 0x1A);
 		for (int i = 0; i < len; ++i)
 		{
 			*buf = this->SPISend(0xFF);
 			++buf;
 		}
-		MAP_GPIOPinWrite(this->CSport, this->CSpin, this->CSpin);
+		busDriver.ChipDeSelect(driverId);
 	}
 
 	// Write Buffer Memory
 	void ENC28J60::WBM(const uint8_t *buf, uint16_t len)
 	{
-		MAP_GPIOPinWrite(this->CSport, this->CSpin, 0);
+		busDriver.ChipSelect(driverId);
 		this->SPISend(0x60 | 0x1A);
 		for (int i = 0; i < len; ++i)
 		{
 			this->SPISend(*buf);
 			++buf;
 		}
-		MAP_GPIOPinWrite(this->CSport, this->CSpin, this->CSpin);
+		busDriver.ChipDeSelect(driverId);
 	}
 
 	/**
@@ -559,19 +394,19 @@ namespace ENCJ_STELLARIS
 	 */
 	void ENC28J60::BFS(uint8_t reg, uint8_t mask)
 	{
-		MAP_GPIOPinWrite(this->CSport, this->CSpin, 0);
+		busDriver.ChipSelect(driverId);
 		this->SPISend(0x80 | reg);
 		this->SPISend(mask);
-		MAP_GPIOPinWrite(this->CSport, this->CSpin, this->CSpin);
+		busDriver.ChipDeSelect(driverId);
 	}
 
 	// Bit Field Clear
 	void ENC28J60::BFC(uint8_t reg, uint8_t mask)
 	{
-		MAP_GPIOPinWrite(this->CSport, this->CSpin, 0);
+		busDriver.ChipSelect(driverId);
 		this->SPISend(0xA0 | reg);
 		this->SPISend(mask);
-		MAP_GPIOPinWrite(this->CSport, this->CSpin, this->CSpin);
+		busDriver.ChipDeSelect(driverId);
 	}
 
 
