@@ -159,10 +159,16 @@ namespace ENCJ_STELLARIS
 	 */
 	void ENC28J60::Interrupt()
 	{
+#ifdef _DEBUG
+		printf("Interrupt\n");
+#endif
 		uint8_t reg = READ_REG(ENC_EIR);
 
 		if (reg & ENC_EIR_PKTIF)
 		{
+#ifdef _DEBUG
+			printf("Handling events\n");
+#endif
 			while (READ_REG(ENC_EPKTCNT) > 0)
 			{
 				this->Receive();
@@ -194,6 +200,10 @@ namespace ENCJ_STELLARIS
 
 		// TODO: figure out what this does and comment as such
 		uint16_t data_count = status[0] | (status[1] << 8);
+
+#ifdef _DEBUG
+		printf("Got packet of size %d\n", data_count);
+#endif
 
 		if (status[2] & (1 << 7))
 		{
@@ -284,7 +294,7 @@ namespace ENCJ_STELLARIS
 		{
 			r = READ_REG(ENC_ECON1);
 		}
-		while ((r & ENC_ECON1_TXRTS) == 0);
+		while ((r & ENC_ECON1_TXRTS) != 0);
 
 		// Read status bits
 		uint8_t status[7];
@@ -304,8 +314,12 @@ namespace ENCJ_STELLARIS
 #ifdef _DEBUG
 			printf("Transmit OK\n");
 #endif
-
-		}
+ 
+		} else {
+#ifdef _DEBUG
+			printf("Transmit error: %d\n", status[2]);
+#endif
+}
 
 		return retStatus;
 	}
