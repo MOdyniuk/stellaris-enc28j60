@@ -4,6 +4,7 @@
 CC_PREFIX=arm-none-eabi-
 CXX=$(CC_PREFIX)g++
 CC=$(CC_PREFIX)gcc
+LD=$(CC_PREFIX)ld
 OBJCOPY=$(CC_PREFIX)objcopy
 SIZE=$(CC_PREFIX)size
 
@@ -30,7 +31,8 @@ RAM_SIZE=32768
 COMMON_FLAGS=$(CPU) -ffunction-sections -fdata-sections -Os 
 
 # C/C++ pre-processor defines and include paths
-DEFINES=$(DEFS) -DTARGET_IS_BLIZZARD_RA2 -DPART_LM4F120H5QR -DUART_BUFFERED -D_DEBUG
+DEFS=-D_DEBUG
+DEFINES=$(DEFS) -DTARGET_IS_BLIZZARD_RA2 -DPART_LM4F120H5QR -DUART_BUFFERED
 INCLUDES=-I$(STELLARIS) -Iuip-1.0 -I. -I uip-1.0/uip
 
 # C++ compiler specific flags
@@ -40,7 +42,7 @@ CXXFLAGS=-fno-rtti -fno-exceptions
 CFLAGS=--std=gnu99
 
 # Linker flags
-LDFLAGS=$(CPU) -nodefaultlibs -T$(LINKER_SCRIPT)
+LDFLAGS=$(CPU) -nodefaultlibs -T$(LINKER_SCRIPT) -Wl,--gc-sections
 
 # Libraries to link against
 LIBS=-lm -lc
@@ -93,7 +95,7 @@ printf "Flash usage     : %6dB / %6dB = %2d%%\n" "$$FLASH_USAGE" "$(FLASH_SIZE)"
 printf "Static RAM usage: %6dB / %6dB = %2d%%\n" "$$RAM_USAGE" "$(RAM_SIZE)" "$$RAM_P"
 endef
 
-.PHONY: print-config
+.PHONY: print-config print-config-verbose
 
 all: print-config $(BUILD_DIR) $(TARGET_BIN)
 
