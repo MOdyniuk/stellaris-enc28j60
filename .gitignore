@@ -3,3 +3,4 @@ enc28j60-booster-example/*
 uip-1.0/doc/*
 html/*
 build
+doxygen
