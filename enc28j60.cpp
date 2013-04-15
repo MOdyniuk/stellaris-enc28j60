@@ -31,6 +31,7 @@ namespace ENCJ_STELLARIS
 
 	void
 	ENC28J60::Init(const uint8_t *mac) {
+		activeBank = 0;
 		BusDriver::Init(this);
 		InitConfig(mac);
 	}
@@ -47,9 +48,7 @@ namespace ENCJ_STELLARIS
 	{
 		// Config
 		nextPacket = 0x0000;
-		printf("Pre-reset\n");
 		Reset();
-		printf("Reset done\n");
 
 		// Check the ESTAT read bit from the chip
 		uint8_t reg;
@@ -148,11 +147,10 @@ namespace ENCJ_STELLARIS
 
 #ifdef _DEBUG
 		uint8_t mc[6] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
-		GetMACAddress(mc);
+		/*GetMACAddress(mc);
 		printf("Mac addr set to: %x:%x:%x:%x:%x:%x\n", mc[0], mc[1], mc[2],
-			mc[3], mc[4], mc[5]);
+			mc[3], mc[4], mc[5]);*/
 #endif
-
 	}
 
 	/**
@@ -177,14 +175,6 @@ namespace ENCJ_STELLARIS
 		}
 	}
 
-	/**
-	 * Recieve a single packet. Contents will be placed in uip_buf, and uIP is
-	 * called as appropriate
-	 *
-	 * @todo: Decouple this from uIP, the IP stack should be elsewhere.
-	 * Possibly have this return a struct with the appropriate data? Difficult
-	 * as it needs to actively read the information
-	 */
 	void ENC28J60::Receive()
 	{
 		uint8_t header[6];
@@ -292,7 +282,7 @@ namespace ENCJ_STELLARIS
  
 		} else {
 #ifdef _DEBUG
-			printf("Transmit error: %d\n", status[2]);
+			printf("Transmit error: %X %X %X %X %X %X %X\n", status[0], status[1], status[2], status[3], status[4], status[5], status[6]);
 #endif
 }
 
