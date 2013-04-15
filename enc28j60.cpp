@@ -31,7 +31,7 @@ namespace ENCJ_STELLARIS
 
 	void
 	ENC28J60::Init(const uint8_t *mac) {
-		
+		BusDriver::Init(this);
 		InitConfig(mac);
 	}
 
@@ -45,10 +45,11 @@ namespace ENCJ_STELLARIS
 	 */
 	void ENC28J60::InitConfig(const uint8_t *mac)
 	{
-
 		// Config
-		this->nextPacket = 0x0000;
-		this->Reset();
+		nextPacket = 0x0000;
+		printf("Pre-reset\n");
+		Reset();
+		printf("Reset done\n");
 
 		// Check the ESTAT read bit from the chip
 		uint8_t reg;
