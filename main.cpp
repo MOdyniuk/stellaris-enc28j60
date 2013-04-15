@@ -96,10 +96,6 @@ int main(void) {
 	uart_init();
 	printf("Welcome\n");
 
-	chip.Init(mac_addr);
-
-	printf("ENC28J60 online\n");
-
 	//
 	// Configure SysTick for a periodic interrupt.
 	//
@@ -110,6 +106,10 @@ int main(void) {
 	MAP_IntMasterEnable();
 
 	MAP_SysCtlPeripheralClockGating(false);
+
+	chip.Init(mac_addr);
+
+	printf("ENC28J60 online\n");
 
 	uip_init();
 
@@ -169,7 +169,6 @@ int main(void) {
 	dhcpc_request();
 
 #endif
-
 
 	long lPeriodicTimer, lARPTimer;
 	lPeriodicTimer = lARPTimer = 0;
