@@ -59,7 +59,7 @@ UIP_SRCS=$(UIP_DIR)/uip/uip.c \
 	 $(UIP_DIR)/apps/dhcpc/dhcpc.c
 
 # C++ source code files
-CXX_SRCS=main.cpp enc28j60.cpp
+CXX_SRCS=main.cpp enc28j60.cpp enc28j60_stellaris.cpp
 
 # C source code
 C_SRCS=dummyfuncs.c \

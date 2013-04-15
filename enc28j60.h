@@ -33,10 +33,11 @@ namespace ENCJ_STELLARIS
 	class BusDriver
 	{
 	public:
-		virtual void 	ChipSelect(uint8_t driverId) = 0;
-		virtual void 	ChipDeSelect(uint8_t driverId) = 0;
-		virtual uint8_t SpiSend(uint8_t driverId, uint8_t msg) = 0;
-		virtual void	PinSet(uint8_t driverId, PinType pin, PinValue value) = 0;
+		static void Init(void *driverId);
+		static void ChipSelect(void *driverId);
+		static void ChipDeSelect(void *driverId);
+		static uint8_t SpiSend(void *driverId, uint8_t msg);
+		static void PinSet(void *driverId, PinType pin, PinValue value);
 	};
 
 	/**
@@ -51,40 +52,21 @@ namespace ENCJ_STELLARIS
 		 *
 		 * Blank arguments default to XPG's boosterpack pinout.
 		 */
-		ENC28J60( const uint8_t *mac,					// MAC address array
-			  uint8_t driverId,
-			  BusDriver &busDriver
-			);
+		ENC28J60();
 
-
-#ifdef STELLARIS_PINS_SSIPIN_CHAPMAN_H
-#ifdef STELLARIS_PINS_DIGITALIOPIN_CHAPMAN_H
-		// TODO: Add in support for Pin Library
-		/**
-		 * Secondary constructor, allows use of StellarisPins library objects
-		 * instead of the more verbose pin arguments.  This is only enabled
-		 * if all pieces of the pin library required are actually present.
-		 */
-		ENC28J60
-			( const uint8_t *mac
-			); // Stellaris pins enabled constructor
-#endif
-#endif
-
+		void Init(const uint8_t *mac);
 		void Receive(void);
 		bool Send(const uint8_t *buf, uint16_t count);
 		void Reset(void);
 		void Interrupt(void);
 
-
 	private:
+		/** Private Methods **/
+
 		/* Setup */
 		void InitConfig(const uint8_t *mac);
 
 		uint8_t SPISend(uint8_t msg);
-
-		uint8_t activeBank;		// Current memory bank
-		uint16_t nextPacket;	// Next data packet (?)
 
 		/* Low level register controls */
 
@@ -120,8 +102,9 @@ namespace ENCJ_STELLARIS
 		void GetMACAddress(uint8_t *macAddr);
 
 	private:
-		BusDriver	&busDriver;
-		uint8_t		driverId;
+		/* Private fields */
+		uint8_t		activeBank;	// Current memory bank
+		uint16_t	nextPacket;	// Next data packet ptr (to internal ENC28J60 memory)
 	};
 
 

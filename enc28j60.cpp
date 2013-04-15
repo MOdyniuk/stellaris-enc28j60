@@ -29,15 +29,19 @@
 namespace ENCJ_STELLARIS
 {
 
-	ENC28J60::ENC28J60( const uint8_t *mac, uint8_t driverId, BusDriver &busDriver)
-		: driverId(driverId), busDriver(busDriver)
+	ENC28J60::ENC28J60()
 	{
-		this->InitConfig(mac);
+	}
+
+	void
+	ENC28J60::Init(const uint8_t *mac) {
+		
+		InitConfig(mac);
 	}
 
 	uint8_t
 	ENC28J60::SPISend(uint8_t msg) {
-		return busDriver.SpiSend(driverId, msg);
+		return BusDriver::SpiSend(this, msg);
 	}
 
 	/**
@@ -330,22 +334,22 @@ namespace ENCJ_STELLARIS
 	void ENC28J60::Reset()
 	{
 		//MAP_GPIOPinWrite(this->RESETport, this->RESETpin, 0);
-		busDriver.ChipSelect(driverId);
+		BusDriver::ChipSelect(this);
 
 		this->SPISend(0xFF);
 
 		//MAP_GPIOPinWrite(this->RESETport, this->RESETpin, this->RESETpin);
-		busDriver.ChipDeSelect(driverId);
+		BusDriver::ChipDeSelect(this);
 	}
 
 	// Read Control Register
 	uint8_t ENC28J60::RCR(uint8_t reg)
 	{
-		busDriver.ChipSelect(driverId);
+		BusDriver::ChipSelect(this);
 		this->SPISend(reg);
 		uint8_t b = SPISend(0xFF);
 
-		busDriver.ChipDeSelect(driverId);
+		BusDriver::ChipDeSelect(this);
 		return b;
 	}
 
@@ -357,11 +361,11 @@ namespace ENCJ_STELLARIS
 	 */
 	uint8_t ENC28J60::RCRM(uint8_t reg)
 	{
-		busDriver.ChipSelect(driverId);
+		BusDriver::ChipSelect(this);
 		this->SPISend(reg);
 		this->SPISend(0xFF);
 		uint8_t b = this->SPISend(0xFF);
-		busDriver.ChipDeSelect(driverId);
+		BusDriver::ChipDeSelect(this);
 
 		return b;
 	}
@@ -369,36 +373,36 @@ namespace ENCJ_STELLARIS
 	// Write Control Register
 	void ENC28J60::WCR(uint8_t reg, uint8_t val)
 	{
-		busDriver.ChipSelect(driverId);
+		BusDriver::ChipSelect(this);
 		this->SPISend(0x40 | reg);
 		this->SPISend(val);
-		busDriver.ChipDeSelect(driverId);
+		BusDriver::ChipDeSelect(this);
 	}
 
 	// Read Buffer Memory
 	void ENC28J60::RBM(uint8_t *buf, uint16_t len)
 	{
-		busDriver.ChipSelect(driverId);
+		BusDriver::ChipSelect(this);
 		this->SPISend(0x20 | 0x1A);
 		for (int i = 0; i < len; ++i)
 		{
 			*buf = this->SPISend(0xFF);
 			++buf;
 		}
-		busDriver.ChipDeSelect(driverId);
+		BusDriver::ChipDeSelect(this);
 	}
 
 	// Write Buffer Memory
 	void ENC28J60::WBM(const uint8_t *buf, uint16_t len)
 	{
-		busDriver.ChipSelect(driverId);
+		BusDriver::ChipSelect(this);
 		this->SPISend(0x60 | 0x1A);
 		for (int i = 0; i < len; ++i)
 		{
 			this->SPISend(*buf);
 			++buf;
 		}
-		busDriver.ChipDeSelect(driverId);
+		BusDriver::ChipDeSelect(this);
 	}
 
 	/**
@@ -408,19 +412,19 @@ namespace ENCJ_STELLARIS
 	 */
 	void ENC28J60::BFS(uint8_t reg, uint8_t mask)
 	{
-		busDriver.ChipSelect(driverId);
+		BusDriver::ChipSelect(this);
 		this->SPISend(0x80 | reg);
 		this->SPISend(mask);
-		busDriver.ChipDeSelect(driverId);
+		BusDriver::ChipDeSelect(this);
 	}
 
 	// Bit Field Clear
 	void ENC28J60::BFC(uint8_t reg, uint8_t mask)
 	{
-		busDriver.ChipSelect(driverId);
+		BusDriver::ChipSelect(this);
 		this->SPISend(0xA0 | reg);
 		this->SPISend(mask);
-		busDriver.ChipDeSelect(driverId);
+		BusDriver::ChipDeSelect(this);
 	}
 
 
