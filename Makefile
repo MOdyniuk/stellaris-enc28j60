@@ -47,11 +47,6 @@ LDFLAGS=$(CPU) -nodefaultlibs -T$(LINKER_SCRIPT) -Wl,--gc-sections
 # Libraries to link against
 LIBS=-lm -lc
 
-# We need to extend VPATH in order to be able to 
-# find the source files which are located in deep paths
-SRC_DIRS += $(UIP_DIR)/uip
-SRC_DIRS += $(UIP_DIR)/apps/dhcpc
-
 UIP_SRCS=$(UIP_DIR)/uip/uip.c \
 	 $(UIP_DIR)/uip/uip_timer.c \
 	 $(UIP_DIR)/uip/psock.c \
@@ -64,6 +59,7 @@ CXX_SRCS=main.cpp enc28j60.cpp enc28j60_stellaris.cpp
 # C source code
 C_SRCS=dummyfuncs.c \
 	startup_gcc.c \
+	$(STELLARIS)/utils/uartstdio.c \
 	$(UIP_SRCS) \
 	httpd.c
 
@@ -95,7 +91,7 @@ printf "Flash usage     : %6dB / %6dB = %2d%%\n" "$$FLASH_USAGE" "$(FLASH_SIZE)"
 printf "Static RAM usage: %6dB / %6dB = %2d%%\n" "$$RAM_USAGE" "$(RAM_SIZE)" "$$RAM_P"
 endef
 
-.PHONY: print-config print-config-verbose
+.PHONY: print-config print-config-verbose $(BUILD_DIR)
 
 all: print-config $(BUILD_DIR) $(TARGET_BIN)
 

@@ -58,7 +58,7 @@ namespace ENCJ_STELLARIS
 		uint8_t reg;
 		do {
 			reg = READ_REG(ENC_ESTAT);
-			MAP_SysCtlDelay(3333200);
+			BusDriver::Delay(10);
 
 #ifdef _DEBUG
 			printf("ENC_ESTAT value: %x\n", reg);
@@ -190,7 +190,6 @@ namespace ENCJ_STELLARIS
 	 */
 	void ENC28J60::Receive()
 	{
-
 		uint8_t header[6];
 		uint8_t *status = header + 2;
 
@@ -211,30 +210,7 @@ namespace ENCJ_STELLARIS
 
 		if (status[2] & (1 << 7))
 		{
-			uip_len = data_count;
-			this->RBM(uip_buf, data_count);
-
-			if (BUF->type == htons(UIP_ETHTYPE_IP))
-			{
-				uip_arp_ipin();
-				uip_input();
-
-				if (uip_len > 0)
-				{
-					uip_arp_out();
-					this->Send(uip_buf, uip_len);
-					uip_len = 0;
-				}
-			}
-			else if (BUF->type == htons(UIP_ETHTYPE_ARP))
-			{
-				uip_arp_arpin();
-				if(uip_len > 0)
-				{
-					this->Send(uip_buf, uip_len);
-					uip_len = 0;
-				}
-			}
+			BusDriver::OnReceive(this, data_count);
 		}
 
 		uint16_t erxst = READ_REG(ENC_ERXSTL) | (READ_REG(ENC_ERXSTH) << 8);
@@ -266,14 +242,12 @@ namespace ENCJ_STELLARIS
 		WRITE_REG(ENC_EWRPTH, TX_START >> 8);
 
 #ifdef _DEBUG
-		printf("dest: %X:%X:%X:%X:%X:%X\n", BUF->dest.addr[0], BUF->dest.addr[1],
-			BUF->dest.addr[2],  BUF->dest.addr[3], BUF->dest.addr[4],
-			BUF->dest.addr[5]);
-		printf("src : %X:%X:%X:%X:%X:%X\n", BUF->src.addr[0], BUF->src.addr[1],
-			BUF->src.addr[2], BUF->src.addr[3], BUF->src.addr[4],
-			BUF->src.addr[5]);
+		printf("dest: %X:%X:%X:%X:%X:%X\n", buf[0], buf[1],
+			buf[2],  buf[3], buf[4], buf[5]);
+		printf("src : %X:%X:%X:%X:%X:%X\n", buf[6], buf[7],
+			buf[8], buf[9], buf[10], buf[11]);
 
-		printf("Type: %X\n", htons(BUF->type));
+		printf("Type: %X\n", (buf[16] << 8) + buf[17]);
 #endif
 
 		uint8_t control = 0x00;
@@ -525,7 +499,7 @@ namespace ENCJ_STELLARIS
 		When the MAC has obtained the register contents, the BUSY bit will
 		clear itself. */
 
-		MAP_SysCtlDelay(((MAP_SysCtlClockGet()/3)/1000));
+		BusDriver::Delay(1);
 
 		uint8_t stat;
 		do
@@ -553,7 +527,7 @@ namespace ENCJ_STELLARIS
 		WRITE_REG(ENC_MIWRL, value & 0xFF);
 		WRITE_REG(ENC_MIWRH, value >> 8);
 
-		MAP_SysCtlDelay(((MAP_SysCtlClockGet()/3)/1000));
+		BusDriver::Delay(1);
 
 		// Wait for busy status to be clear before continuing
 		uint8_t stat;

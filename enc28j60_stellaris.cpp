@@ -1,6 +1,8 @@
 #include "enc28j60_stellaris.h"
 #include "enc28j60.h"
 
+#define BUF ((struct uip_eth_hdr *)&uip_buf[0])
+
 void
 ENCJ_STELLARIS::BusDriver::ChipSelect(void* driverId) {
 	MAP_GPIOPinWrite(StellarisENC28J60Configuration::PIN_CHIP_SELECT_BASE, StellarisENC28J60Configuration::PIN_CHIP_SELECT, 0);
@@ -19,11 +21,13 @@ ENCJ_STELLARIS::BusDriver::SpiSend(void *driverId, uint8_t msg) {
 	return (uint8_t)val;
 }
 
-void ENCJ_STELLARIS::BusDriver::PinSet(void *driverId, ENCJ_STELLARIS::PinType pin, ENCJ_STELLARIS::PinValue value) {
+void
+ENCJ_STELLARIS::BusDriver::PinSet(void *driverId, ENCJ_STELLARIS::PinType pin, ENCJ_STELLARIS::PinValue value) {
 }
 
 /* Initialization code which is not part of the interface */
-void ENCJ_STELLARIS::BusDriver::Init(void *driverId) {
+void
+ENCJ_STELLARIS::BusDriver::Init(void *driverId) {
 	// Configure SSI2 for ENC28J60 usage
 	// GPIO_PB4 is CLK
 	// GPIO_PB6 is RX
@@ -53,4 +57,37 @@ void ENCJ_STELLARIS::BusDriver::Init(void *driverId) {
 	MAP_GPIOIntTypeSet(StellarisENC28J60Configuration::PIN_INT_BASE, StellarisENC28J60Configuration::PIN_INT, GPIO_FALLING_EDGE);
 	MAP_GPIOPinIntClear(StellarisENC28J60Configuration::PIN_INT_BASE, StellarisENC28J60Configuration::PIN_INT);
 	MAP_GPIOPinIntEnable(StellarisENC28J60Configuration::PIN_INT_BASE, StellarisENC28J60Configuration::PIN_INT);
+}
+
+void
+ENCJ_STELLARIS::BusDriver::Delay(uint32_t ms) {
+	MAP_SysCtlDelay(((MAP_SysCtlClockGet()/3)/1000)*ms);
+}
+
+void
+ENCJ_STELLARIS::BusDriver::OnReceive(ENCJ_STELLARIS::ENC28J60 *driver, uint16_t data_count) {
+	uip_len = data_count;
+	driver->RBM(uip_buf, data_count);
+
+	if (BUF->type == htons(UIP_ETHTYPE_IP))
+	{
+		uip_arp_ipin();
+		uip_input();
+
+		if (uip_len > 0)
+		{
+			uip_arp_out();
+			driver->Send(uip_buf, uip_len);
+			uip_len = 0;
+		}
+	}
+	else if (BUF->type == htons(UIP_ETHTYPE_ARP))
+	{
+		uip_arp_arpin();
+		if(uip_len > 0)
+		{
+			driver->Send(uip_buf, uip_len);
+			uip_len = 0;
+		}
+	}
 }

@@ -11,17 +11,15 @@
 #ifndef ENC28J60_STELLARIS_CHAPMAN_H_
 #define ENC28J60_STELLARIS_CHAPMAN_H_
 
-//TODO: Remove "common.h" requirement? Maybe?
-#include "common.h"
+#include <stdint.h>
 #include "enc28j60reg.h"
 
-//#include "enc28j60.cpp"
-
+extern "C" void UARTprintf(const char *pcString, ...);
+#define printf UARTprintf
 
 namespace ENCJ_STELLARIS
 {
 	typedef enum {
-		ChipSelect,
 		Reset
 	} PinType;
 
@@ -29,6 +27,8 @@ namespace ENCJ_STELLARIS
 		Low = 0,
 		High = 1
 	} PinValue;
+
+	class ENC28J60;
 
 	class BusDriver
 	{
@@ -38,6 +38,8 @@ namespace ENCJ_STELLARIS
 		static void ChipDeSelect(void *driverId);
 		static uint8_t SpiSend(void *driverId, uint8_t msg);
 		static void PinSet(void *driverId, PinType pin, PinValue value);
+		static void Delay(uint32_t ms);
+		static void OnReceive(ENC28J60 *driver, uint16_t data_count);
 	};
 
 	/**
@@ -59,6 +61,7 @@ namespace ENCJ_STELLARIS
 		bool Send(const uint8_t *buf, uint16_t count);
 		void Reset(void);
 		void Interrupt(void);
+		void RBM(uint8_t *buf, uint16_t len);	// Read Buffer Memory
 
 	private:
 		/** Private Methods **/
@@ -73,8 +76,6 @@ namespace ENCJ_STELLARIS
 		uint8_t RCR(uint8_t reg);				// Read Control Register
 		uint8_t RCRM(uint8_t reg);				// Read Control Register MAC/MII
 		void WCR(uint8_t reg, uint8_t val);		// Write Control Register
-	
-		void RBM(uint8_t *buf, uint16_t len);	// Read Buffer Memory
 		void WBM(const uint8_t *buf, uint16_t len);	// Write Buffer Memory
 
 		void BFS(uint8_t reg, uint8_t mask);	// Bit Field Set

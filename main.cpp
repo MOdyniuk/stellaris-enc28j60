@@ -4,7 +4,7 @@
 #ifdef __cplusplus 
 extern "C" {
 #endif
-#include "utils/uartstdio.c"
+#include "utils/uartstdio.h"
 #ifdef __cplusplus 
 }
 #endif

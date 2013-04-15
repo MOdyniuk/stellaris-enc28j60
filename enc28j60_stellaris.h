@@ -5,18 +5,7 @@
 #ifndef _ENC28J60_STELLARIS
 #define _ENC28J60_STELLARIS
 
-#include <stdint.h>
-
-#include <inc/hw_types.h>
-#include <inc/hw_memmap.h>
-#include <inc/hw_ints.h>
-
-#include <driverlib/gpio.h>
-#include <driverlib/interrupt.h>
-#include <driverlib/pin_map.h>
-#include <driverlib/rom.h>
-#include <driverlib/rom_map.h>
-#include <driverlib/ssi.h>
+#include "common.h"
 
 class StellarisENC28J60DefaultConfiguration {
 public:
