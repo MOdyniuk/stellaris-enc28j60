@@ -91,9 +91,12 @@ printf "Flash usage     : %6dB / %6dB = %2d%%\n" "$$FLASH_USAGE" "$(FLASH_SIZE)"
 printf "Static RAM usage: %6dB / %6dB = %2d%%\n" "$$RAM_USAGE" "$(RAM_SIZE)" "$$RAM_P"
 endef
 
-.PHONY: print-config print-config-verbose $(BUILD_DIR)
+.PHONY: print-config print-config-verbose $(BUILD_DIR) doxygen
 
 all: print-config $(BUILD_DIR) $(TARGET_BIN)
+
+doxygen: $(SRCS)
+	@doxygen	
 
 load: $(TARGET_BIN)
 	@echo "Flashing $(TARGET_BIN) to target"

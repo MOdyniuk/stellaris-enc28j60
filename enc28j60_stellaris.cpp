@@ -4,17 +4,17 @@
 #define BUF ((struct uip_eth_hdr *)&uip_buf[0])
 
 void
-ENCJ_STELLARIS::BusDriver::ChipSelect(void* driverId) {
+ENCJ_STELLARIS::BusDriver::ChipSelect(ENCJ_STELLARIS::ENC28J60 *driver) {
 	MAP_GPIOPinWrite(StellarisENC28J60Configuration::PIN_CHIP_SELECT_BASE, StellarisENC28J60Configuration::PIN_CHIP_SELECT, 0);
 }
 
 void
-ENCJ_STELLARIS::BusDriver::ChipDeSelect(void* driverId) {
+ENCJ_STELLARIS::BusDriver::ChipDeSelect(ENCJ_STELLARIS::ENC28J60 *driver) {
 	MAP_GPIOPinWrite(StellarisENC28J60Configuration::PIN_CHIP_SELECT_BASE, StellarisENC28J60Configuration::PIN_CHIP_SELECT, StellarisENC28J60Configuration::PIN_CHIP_SELECT);
 }
 
 uint8_t
-ENCJ_STELLARIS::BusDriver::SpiSend(void *driverId, uint8_t msg) {
+ENCJ_STELLARIS::BusDriver::SpiSend(ENCJ_STELLARIS::ENC28J60 *driver, uint8_t msg) {
 	unsigned long val;
 	MAP_SSIDataPut(StellarisENC28J60Configuration::SPI_SSI_BASE, msg);
 	MAP_SSIDataGet(StellarisENC28J60Configuration::SPI_SSI_BASE, &val);
@@ -22,12 +22,11 @@ ENCJ_STELLARIS::BusDriver::SpiSend(void *driverId, uint8_t msg) {
 }
 
 void
-ENCJ_STELLARIS::BusDriver::PinSet(void *driverId, ENCJ_STELLARIS::PinType pin, ENCJ_STELLARIS::PinValue value) {
+ENCJ_STELLARIS::BusDriver::PinSet(ENCJ_STELLARIS::ENC28J60 *driver, ENCJ_STELLARIS::PinType pin, ENCJ_STELLARIS::PinValue value) {
 }
 
-/* Initialization code which is not part of the interface */
 void
-ENCJ_STELLARIS::BusDriver::Init(void *driverId) {
+ENCJ_STELLARIS::BusDriver::Init(ENCJ_STELLARIS::ENC28J60 *driver) {
 	// Configure SSI2 for ENC28J60 usage
 	// GPIO_PB4 is CLK
 	// GPIO_PB6 is RX

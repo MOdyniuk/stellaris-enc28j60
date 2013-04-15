@@ -14,6 +14,7 @@
 #include <stdint.h>
 #include "enc28j60reg.h"
 
+/* Last thing we need to get rid of: UARTprintf */
 extern "C" void UARTprintf(const char *pcString, ...);
 #define printf UARTprintf
 
@@ -30,37 +31,132 @@ namespace ENCJ_STELLARIS
 
 	class ENC28J60;
 
+	/** Abstract which acts both as HAL and IP abstraction layer.
+	 *
+	 * The basic idea is that the BusDriver provides the necessary methods for
+         * both hardware setup and communication (SPI, GPIO), communication with
+	 * the IP-stack, and basic utility methods (Delay, in this case).
+	 *
+	 * This class has no implementation. Users of the ENC28J60 driver must
+	 * provide implementations of the methods.
+	 * All the methods are static. For most methods a pointer to the ENC28J60-driver
+	 * instance is provided, which allows the Bus Driver to deal with multiple driver
+	 * instances and perform calls back to the ENC28J60 driver, if needed.
+	 *
+	 * The term "bus" is used to describe the three communication means towards the
+	 * ENC28J60: The SPI-bus, the chip select line, and the reset line.
+	 * The bus also includes the communication path towards the IP-stack. This is
+         * dealt with by the OnReceive()-method.
+	 */
 	class BusDriver
 	{
 	public:
-		static void Init(void *driverId);
-		static void ChipSelect(void *driverId);
-		static void ChipDeSelect(void *driverId);
-		static uint8_t SpiSend(void *driverId, uint8_t msg);
-		static void PinSet(void *driverId, PinType pin, PinValue value);
+		/** Initialize the "bus".
+		 *
+	  	 * The underlying SPI and GPIO channels need to be initialized.
+		 * In order to be compatible with the ENC28J60 driver, the SPI-bus must
+		 * be initialized to 8-bit transfer.
+		 *
+	         * @param[in]	driver	Pointer to ENC28J60 driver calling.
+		 */
+		static void Init(ENC28J60 *driver);
+
+		/** Select the ENC28J60 on the SPI-bus.
+		 *
+	         * @param[in]	driver	Pointer to ENC28J60 driver calling.
+		 */
+		static void ChipSelect(ENC28J60 *driver);
+
+		/** De-select the ENC28J60 on the SPI-bus.
+		 *
+	         * @param[in]	driver	Pointer to ENC28J60 driver calling.
+		 */
+		static void ChipDeSelect(ENC28J60 *driver);
+
+
+		/** Transmit and receive a single byte.
+		 *
+	         * @param[in]	driver	Pointer to ENC28J60 driver calling.
+		 * @param[in]	msg	Byte to transmit.
+		 * @return	Byte received.
+		 */
+		static uint8_t SpiSend(ENC28J60 *driver, uint8_t msg);
+
+		/** Set a given GPIO-pin.
+		 * 
+	         * @param[in]	driver	Pointer to ENC28J60 driver calling.
+		 * @param[in]	pin	The pin to set.
+		 * @param[in]	value	The value to set (high/low).
+		 */
+		static void PinSet(ENC28J60 *driver, PinType pin, PinValue value);
+
+		/** Delay for a number of miliseconds.
+		 * 
+	         * @param[in]	ms	Miliseconds to delay.
+		 */
 		static void Delay(uint32_t ms);
+
+		
+		/** Send data to the IP-stack.
+		 *
+		 * Called by the ENC28J60-driver when it receives data that needs to be
+		 * passed on to the IP-stack.
+		 * The implementer of this method must use ENC28J60::RBM(uint8_t,uint16_t) to read
+		 * exactly @p data_count bytes.
+		 * 
+	         * @param[in]	driver		Pointer to ENC28J60 driver calling.
+	         * @param[in]	data_count	Number of bytes available.
+		 */
 		static void OnReceive(ENC28J60 *driver, uint16_t data_count);
 	};
 
-	/**
-	 * ENC28J60 Class
+	/** ENC28J60 driver
+	 *
+	 * Driver to control one ENC28J60. It uses the static methods in BusDriver to
+	 * communicate with the ENC28J60.
+	 *
+	 * The driver performs no initialization in the constructor, the Init() methods is used for that.
+	 * The reason for this is to allow ENC28J60 instances to be globally declared without
+	 * running any code before the main-method has been reached.
 	 */
 	class ENC28J60
 	{
 	public:
-		/**
-		 * Primary constructor, all arguments are optional except the MAC
-		 * address.
+		/** Initialize the ENC28J60.
 		 *
-		 * Blank arguments default to XPG's boosterpack pinout.
+		 * @param[in]	mac	The MAC addres to initialize the ENC28J60 with.
 		 */
-		ENC28J60();
-
 		void Init(const uint8_t *mac);
-		void Receive(void);
+
+		/** Request the ENC28J60 to transmit an ethernet frame.
+		 *
+		 * @param[in]	buf	Buffer containing frame to transmit.
+		 * @param[in]	count	Size of the buffer.
+		 * @return		True, if the transmission was successull. False, otherwise.
+  		 */
 		bool Send(const uint8_t *buf, uint16_t count);
+
+		/** Soft-reset the ENC28J60.
+		 */
 		void Reset(void);
+
+		/** Handle an interrupt signaled by the ENC28J60.
+		 * 
+		 */
 		void Interrupt(void);
+
+		/** Read from the ENC28J60 buffer memory.
+		 *
+		 * This methods should generally only be called from BusDriver::OnReceive(),
+		 * and the exact number of bytes reported to BusDriver::OnReceive() should be read.
+		 * However, they may be read with multiple calls to this method.
+		 *
+		 * Calling this method in any other context, or failing to read the correct number
+		 * of bytes, might corrupt the buffer memory of the ENC28J60.
+		 *
+		 * @param[out]	buf	Buffer to fill with content.
+		 * @param[in]	len	Number of bytes to read from the buffer memory.
+  		 */
 		void RBM(uint8_t *buf, uint16_t len);	// Read Buffer Memory
 
 	private:
@@ -70,6 +166,8 @@ namespace ENCJ_STELLARIS
 		void InitConfig(const uint8_t *mac);
 
 		uint8_t SPISend(uint8_t msg);
+
+		void Receive(void);
 
 		/* Low level register controls */
 

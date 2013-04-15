@@ -29,10 +29,6 @@
 namespace ENCJ_STELLARIS
 {
 
-	ENC28J60::ENC28J60()
-	{
-	}
-
 	void
 	ENC28J60::Init(const uint8_t *mac) {
 		
