@@ -128,6 +128,13 @@ namespace ENCJ_STELLARIS
 		 */
 		void Init(const uint8_t *mac);
 
+		/** Initialize the ENC28J60.
+		 *
+		 * @param[in]	mac		The MAC addres to initialize the ENC28J60 with.
+		 * @param[in]	userData	User data pointer.
+		 */
+		void Init(const uint8_t *mac, void *userData);
+
 		/** Request the ENC28J60 to transmit an ethernet frame.
 		 *
 		 * @param[in]	buf	Buffer containing frame to transmit.
@@ -158,6 +165,10 @@ namespace ENCJ_STELLARIS
 		 * @param[in]	len	Number of bytes to read from the buffer memory.
   		 */
 		void RBM(uint8_t *buf, uint16_t len);	// Read Buffer Memory
+
+		void GetMACAddress(uint8_t *macAddr);
+
+		void *GetUserData();
 
 	private:
 		/** Private Methods **/
@@ -198,12 +209,12 @@ namespace ENCJ_STELLARIS
 		// Mass memory operations
 		void SetRXMemoryArea(uint16_t startAddr, uint16_t endAddr);
 		void SetMACAddress(const uint8_t *macAddr);
-		void GetMACAddress(uint8_t *macAddr);
 
 	private:
 		/* Private fields */
 		uint8_t		activeBank;	// Current memory bank
 		uint16_t	nextPacket;	// Next data packet ptr (to internal ENC28J60 memory)
+		void		*userData;
 	};
 
 

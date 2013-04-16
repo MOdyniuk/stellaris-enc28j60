@@ -5,7 +5,7 @@
  */
 
 #include <enc28j60.h>
-
+#include <stdlib.h>
 
 /* Macros for accessing registers.
  * These macros should be used instead of calling the functions directly.
@@ -30,7 +30,14 @@ namespace ENCJ_STELLARIS
 {
 
 	void
-	ENC28J60::Init(const uint8_t *mac) {
+	ENC28J60::Init(const uint8_t *mac){
+		Init(mac, NULL);
+	}
+
+	void
+	ENC28J60::Init(const uint8_t *mac, void *userData) 
+	{
+		this->userData = userData;
 		activeBank = 0;
 		BusDriver::Init(this);
 		InitConfig(mac);
@@ -559,6 +566,11 @@ namespace ENCJ_STELLARIS
 		macAddr[3] = READ_REG(ENC_MAADR4);
 		macAddr[4] = READ_REG(ENC_MAADR5);
 		macAddr[5] = READ_REG(ENC_MAADR6);
+	}
+
+	void*
+	ENC28J60::GetUserData() {
+		return userData;
 	}
 
 
