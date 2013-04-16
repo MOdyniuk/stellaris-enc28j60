@@ -31,7 +31,7 @@ RAM_SIZE=32768
 COMMON_FLAGS=$(CPU) -ffunction-sections -fdata-sections -Os 
 
 # C/C++ pre-processor defines and include paths
-DEFS=-D_DEBUG
+DEFS=
 DEFINES=$(DEFS) -DTARGET_IS_BLIZZARD_RA2 -DPART_LM4F120H5QR -DUART_BUFFERED
 INCLUDES=-I$(STELLARIS) -Iuip-1.0 -I. -I uip-1.0/uip
 
