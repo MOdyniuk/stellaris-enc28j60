@@ -18,7 +18,7 @@
 extern "C" void UARTprintf(const char *pcString, ...);
 #define printf UARTprintf
 
-namespace ENCJ_STELLARIS
+namespace ENC28J60
 {
 	typedef enum {
 		Reset
@@ -29,29 +29,29 @@ namespace ENCJ_STELLARIS
 		High = 1
 	} PinValue;
 
-	class ENC28J60;
+	class Driver;
 
-	/** Abstract which acts both as HAL and IP abstraction layer.
+	/** Glue layer which acts both as HAL and IP abstraction layer.
 	 *
-	 * The basic idea is that the BusDriver provides the necessary methods for
+	 * The basic idea is that the Gluec-lass provides the necessary methods for
          * both hardware setup and communication (SPI, GPIO), communication with
 	 * the IP-stack, and basic utility methods (Delay, in this case).
 	 *
 	 * This class has no implementation. Users of the ENC28J60 driver must
 	 * provide implementations of the methods.
 	 * All the methods are static. For most methods a pointer to the ENC28J60-driver
-	 * instance is provided, which allows the Bus Driver to deal with multiple driver
+	 * instance is provided, which allows the Glue layer to deal with multiple driver
 	 * instances and perform calls back to the ENC28J60 driver, if needed.
 	 *
-	 * The term "bus" is used to describe the three communication means towards the
+	 * The glue layer covers the three communication means towards the
 	 * ENC28J60: The SPI-bus, the chip select line, and the reset line.
-	 * The bus also includes the communication path towards the IP-stack. This is
+	 * It also includes the communication path towards the IP-stack. This is
          * dealt with by the OnReceive()-method.
 	 */
-	class BusDriver
+	class Glue
 	{
 	public:
-		/** Initialize the "bus".
+		/** Initialize the glue layer.
 		 *
 	  	 * The underlying SPI and GPIO channels need to be initialized.
 		 * In order to be compatible with the ENC28J60 driver, the SPI-bus must
@@ -59,28 +59,28 @@ namespace ENCJ_STELLARIS
 		 *
 	         * @param[in]	driver	Pointer to ENC28J60 driver calling.
 		 */
-		static void Init(ENC28J60 *driver);
+		static void Init(Driver *driver);
 
 		/** Select the ENC28J60 on the SPI-bus.
 		 *
 	         * @param[in]	driver	Pointer to ENC28J60 driver calling.
 		 */
-		static void ChipSelect(ENC28J60 *driver);
+		static void ChipSelect(Driver *driver);
 
 		/** De-select the ENC28J60 on the SPI-bus.
 		 *
 	         * @param[in]	driver	Pointer to ENC28J60 driver calling.
 		 */
-		static void ChipDeSelect(ENC28J60 *driver);
+		static void ChipDeSelect(Driver *driver);
 
 
-		/** Transmit and receive a single byte.
+		/** Transmit and receive a single byte over SPI.
 		 *
-	         * @param[in]	driver	Pointer to ENC28J60 driver calling.
+	         * @param[in]	driver	Pointer to Driver driver calling.
 		 * @param[in]	msg	Byte to transmit.
 		 * @return	Byte received.
 		 */
-		static uint8_t SpiSend(ENC28J60 *driver, uint8_t msg);
+		static uint8_t SpiSend(Driver *driver, uint8_t msg);
 
 		/** Set a given GPIO-pin.
 		 * 
@@ -88,7 +88,7 @@ namespace ENCJ_STELLARIS
 		 * @param[in]	pin	The pin to set.
 		 * @param[in]	value	The value to set (high/low).
 		 */
-		static void PinSet(ENC28J60 *driver, PinType pin, PinValue value);
+		static void PinSet(Driver *driver, PinType pin, PinValue value);
 
 		/** Delay for a number of miliseconds.
 		 * 
@@ -99,27 +99,27 @@ namespace ENCJ_STELLARIS
 		
 		/** Send data to the IP-stack.
 		 *
-		 * Called by the ENC28J60-driver when it receives data that needs to be
+		 * Called by the Driver when it receives data that needs to be
 		 * passed on to the IP-stack.
-		 * The implementer of this method must use ENC28J60::RBM(uint8_t,uint16_t) to read
+		 * The implementer of this method must use Driver::RBM(uint8_t,uint16_t) to read
 		 * exactly @p data_count bytes.
 		 * 
 	         * @param[in]	driver		Pointer to ENC28J60 driver calling.
 	         * @param[in]	data_count	Number of bytes available.
 		 */
-		static void OnReceive(ENC28J60 *driver, uint16_t data_count);
+		static void OnReceive(Driver *driver, uint16_t data_count);
 	};
 
 	/** ENC28J60 driver
 	 *
-	 * Driver to control one ENC28J60. It uses the static methods in BusDriver to
+	 * Driver to control one ENC28J60. It uses the static methods in Glue to
 	 * communicate with the ENC28J60.
 	 *
 	 * The driver performs no initialization in the constructor, the Init() methods is used for that.
-	 * The reason for this is to allow ENC28J60 instances to be globally declared without
+	 * The reason for this is to allow Driver instances to be globally declared without
 	 * running any code before the main-method has been reached.
 	 */
-	class ENC28J60
+	class Driver
 	{
 	public:
 		/** Initialize the ENC28J60.
@@ -154,8 +154,8 @@ namespace ENCJ_STELLARIS
 
 		/** Read from the ENC28J60 buffer memory.
 		 *
-		 * This methods should generally only be called from BusDriver::OnReceive(),
-		 * and the exact number of bytes reported to BusDriver::OnReceive() should be read.
+		 * This methods should generally only be called from Glue::OnReceive(),
+		 * and the exact number of bytes reported to Glue::OnReceive() should be read.
 		 * However, they may be read with multiple calls to this method.
 		 *
 		 * Calling this method in any other context, or failing to read the correct number
@@ -218,6 +218,6 @@ namespace ENCJ_STELLARIS
 	};
 
 
-} // Namespace ENCJ_STELLARIS
+} // Namespace ENC28J60
 
 #endif // ENC28J60_STELLARIS_CHAPMAN_H_

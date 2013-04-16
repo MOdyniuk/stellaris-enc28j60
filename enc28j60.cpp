@@ -26,32 +26,33 @@
 #define RX_END (TX_START-1)
 
 
-namespace ENCJ_STELLARIS
+namespace ENC28J60
 {
 
 	void
-	ENC28J60::Init(const uint8_t *mac){
+	Driver::Init(const uint8_t *mac){
 		Init(mac, NULL);
 	}
 
 	void
-	ENC28J60::Init(const uint8_t *mac, void *userData) 
+	Driver::Init(const uint8_t *mac, void *userData) 
 	{
 		this->userData = userData;
 		activeBank = 0;
-		BusDriver::Init(this);
+		Glue::Init(this);
 		InitConfig(mac);
 	}
 
 	uint8_t
-	ENC28J60::SPISend(uint8_t msg) {
-		return BusDriver::SpiSend(this, msg);
+	Driver::SPISend(uint8_t msg) {
+		return Glue::SpiSend(this, msg);
 	}
 
 	/**
 	 * Config the ENCJ chip's registers.
 	 */
-	void ENC28J60::InitConfig(const uint8_t *mac)
+	void
+	Driver::InitConfig(const uint8_t *mac)
 	{
 		// Config
 		nextPacket = 0x0000;
@@ -61,7 +62,7 @@ namespace ENCJ_STELLARIS
 		uint8_t reg;
 		do {
 			reg = READ_REG(ENC_ESTAT);
-			BusDriver::Delay(10);
+			Glue::Delay(10);
 
 #ifdef _DEBUG
 			printf("ENC_ESTAT value: %x\n", reg);
@@ -163,7 +164,8 @@ namespace ENCJ_STELLARIS
 	/**
 	 * Handle a packet recieved interrupt request from the ENC
 	 */
-	void ENC28J60::Interrupt()
+	void
+	Driver::Interrupt()
 	{
 #ifdef _DEBUG
 		printf("Interrupt\n");
@@ -182,7 +184,8 @@ namespace ENCJ_STELLARIS
 		}
 	}
 
-	void ENC28J60::Receive()
+	void
+	Driver::Receive()
 	{
 		uint8_t header[6];
 		uint8_t *status = header + 2;
@@ -204,7 +207,7 @@ namespace ENCJ_STELLARIS
 
 		if (status[2] & (1 << 7))
 		{
-			BusDriver::OnReceive(this, data_count);
+			Glue::OnReceive(this, data_count);
 		}
 
 		uint16_t erxst = READ_REG(ENC_ERXSTL) | (READ_REG(ENC_ERXSTH) << 8);
@@ -227,7 +230,8 @@ namespace ENCJ_STELLARIS
 	 * Send a packet. Function will block until transmission is complete.
 	 * Returns true if transmission was successful, false otherwise.
 	 */
-	bool ENC28J60::Send(const uint8_t *buf, uint16_t count)
+	bool
+	Driver::Send(const uint8_t *buf, uint16_t count)
 	{
 		WRITE_REG(ENC_ETXSTL, TX_START & 0xFF);
 		WRITE_REG(ENC_ETXSTH, TX_START >> 8);
@@ -299,25 +303,27 @@ namespace ENCJ_STELLARIS
 	/**
 	 * Perform a soft reset of the ENC chip
 	 */
-	void ENC28J60::Reset()
+	void
+	Driver::Reset()
 	{
 		//MAP_GPIOPinWrite(this->RESETport, this->RESETpin, 0);
-		BusDriver::ChipSelect(this);
+		Glue::ChipSelect(this);
 
 		this->SPISend(0xFF);
 
 		//MAP_GPIOPinWrite(this->RESETport, this->RESETpin, this->RESETpin);
-		BusDriver::ChipDeSelect(this);
+		Glue::ChipDeSelect(this);
 	}
 
 	// Read Control Register
-	uint8_t ENC28J60::RCR(uint8_t reg)
+	uint8_t
+	Driver::RCR(uint8_t reg)
 	{
-		BusDriver::ChipSelect(this);
+		Glue::ChipSelect(this);
 		this->SPISend(reg);
 		uint8_t b = SPISend(0xFF);
 
-		BusDriver::ChipDeSelect(this);
+		Glue::ChipDeSelect(this);
 		return b;
 	}
 
@@ -327,50 +333,54 @@ namespace ENCJ_STELLARIS
 	 * byte. Presumably because it takes longer to fetch the values
 	 * of those registers.
 	 */
-	uint8_t ENC28J60::RCRM(uint8_t reg)
+	uint8_t
+	Driver::RCRM(uint8_t reg)
 	{
-		BusDriver::ChipSelect(this);
+		Glue::ChipSelect(this);
 		this->SPISend(reg);
 		this->SPISend(0xFF);
 		uint8_t b = this->SPISend(0xFF);
-		BusDriver::ChipDeSelect(this);
+		Glue::ChipDeSelect(this);
 
 		return b;
 	}
 
 	// Write Control Register
-	void ENC28J60::WCR(uint8_t reg, uint8_t val)
+	void
+	Driver::WCR(uint8_t reg, uint8_t val)
 	{
-		BusDriver::ChipSelect(this);
+		Glue::ChipSelect(this);
 		this->SPISend(0x40 | reg);
 		this->SPISend(val);
-		BusDriver::ChipDeSelect(this);
+		Glue::ChipDeSelect(this);
 	}
 
 	// Read Buffer Memory
-	void ENC28J60::RBM(uint8_t *buf, uint16_t len)
+	void
+	Driver::RBM(uint8_t *buf, uint16_t len)
 	{
-		BusDriver::ChipSelect(this);
+		Glue::ChipSelect(this);
 		this->SPISend(0x20 | 0x1A);
 		for (int i = 0; i < len; ++i)
 		{
 			*buf = this->SPISend(0xFF);
 			++buf;
 		}
-		BusDriver::ChipDeSelect(this);
+		Glue::ChipDeSelect(this);
 	}
 
 	// Write Buffer Memory
-	void ENC28J60::WBM(const uint8_t *buf, uint16_t len)
+	void
+	Driver::WBM(const uint8_t *buf, uint16_t len)
 	{
-		BusDriver::ChipSelect(this);
+		Glue::ChipSelect(this);
 		this->SPISend(0x60 | 0x1A);
 		for (int i = 0; i < len; ++i)
 		{
 			this->SPISend(*buf);
 			++buf;
 		}
-		BusDriver::ChipDeSelect(this);
+		Glue::ChipDeSelect(this);
 	}
 
 	/**
@@ -378,27 +388,30 @@ namespace ENCJ_STELLARIS
 	 * Set the bits of argument 'mask' in the register 'reg'.
 	 * Not valid for MAC and MII registers.
 	 */
-	void ENC28J60::BFS(uint8_t reg, uint8_t mask)
+	void
+	Driver::BFS(uint8_t reg, uint8_t mask)
 	{
-		BusDriver::ChipSelect(this);
+		Glue::ChipSelect(this);
 		this->SPISend(0x80 | reg);
 		this->SPISend(mask);
-		BusDriver::ChipDeSelect(this);
+		Glue::ChipDeSelect(this);
 	}
 
 	// Bit Field Clear
-	void ENC28J60::BFC(uint8_t reg, uint8_t mask)
+	void
+	Driver::BFC(uint8_t reg, uint8_t mask)
 	{
-		BusDriver::ChipSelect(this);
+		Glue::ChipSelect(this);
 		this->SPISend(0xA0 | reg);
 		this->SPISend(mask);
-		BusDriver::ChipDeSelect(this);
+		Glue::ChipDeSelect(this);
 	}
 
 
 
 	// Switch active memory bank
-	void ENC28J60::SwitchBank(uint8_t new_bank)
+	void
+	Driver::SwitchBank(uint8_t new_bank)
 	{
 		if (new_bank == this->activeBank || new_bank == ANY_BANK)
 		{
@@ -413,7 +426,8 @@ namespace ENCJ_STELLARIS
 	}
 
 	// Read a register's contents
-	uint8_t ENC28J60::ReadRegister(uint8_t reg, uint8_t bank)
+	uint8_t
+	Driver::ReadRegister(uint8_t reg, uint8_t bank)
 	{
 		if (bank != this->activeBank)
 		{
@@ -424,7 +438,8 @@ namespace ENCJ_STELLARIS
 	}
 
 	// Read a MII register's contents
-	uint8_t ENC28J60::ReadMIIRegister(uint8_t reg, uint8_t bank)
+	uint8_t
+	Driver::ReadMIIRegister(uint8_t reg, uint8_t bank)
 	{
 		if (bank != this->activeBank)
 		{
@@ -435,7 +450,8 @@ namespace ENCJ_STELLARIS
 	}
 
 	// Write to a register
-	void ENC28J60::WriteRegister(uint8_t reg, uint8_t bank, uint8_t value)
+	void
+	Driver::WriteRegister(uint8_t reg, uint8_t bank, uint8_t value)
 	{
 		if (bank != this->activeBank)
 		{
@@ -448,7 +464,8 @@ namespace ENCJ_STELLARIS
 
 
 	// Batch bit field set
-	void ENC28J60::BitsFieldSet(uint8_t reg, uint8_t bank, uint8_t mask)
+	void
+	Driver::BitsFieldSet(uint8_t reg, uint8_t bank, uint8_t mask)
 	{
 		if (bank != this->activeBank)
 		{
@@ -459,7 +476,8 @@ namespace ENCJ_STELLARIS
 	}
 
 	// Batch bit field clear
-	void ENC28J60::BitsFieldClear(uint8_t reg, uint8_t bank, uint8_t mask)
+	void
+	Driver::BitsFieldClear(uint8_t reg, uint8_t bank, uint8_t mask)
 	{
 		if (bank != this->activeBank)
 		{
@@ -476,7 +494,8 @@ namespace ENCJ_STELLARIS
 	* Reading procedure is described in ENC28J60 datasheet
 	* section 3.3.
 	*/
-	uint16_t ENC28J60::ReadPHY(uint8_t address)
+	uint16_t
+	Driver::ReadPHY(uint8_t address)
 	{
 		/*Write the address of the PHY register to read from into the
 		MMIREGADR register. */
@@ -493,7 +512,7 @@ namespace ENCJ_STELLARIS
 		When the MAC has obtained the register contents, the BUSY bit will
 		clear itself. */
 
-		BusDriver::Delay(1);
+		Glue::Delay(1);
 
 		uint8_t stat;
 		do
@@ -515,13 +534,14 @@ namespace ENCJ_STELLARIS
 	}
 
 	// PHY memory write
-	void ENC28J60::WritePHY(uint8_t address, uint16_t value)
+	void
+	Driver::WritePHY(uint8_t address, uint16_t value)
 	{
 		WRITE_REG(ENC_MIREGADR, address);
 		WRITE_REG(ENC_MIWRL, value & 0xFF);
 		WRITE_REG(ENC_MIWRH, value >> 8);
 
-		BusDriver::Delay(1);
+		Glue::Delay(1);
 
 		// Wait for busy status to be clear before continuing
 		uint8_t stat;
@@ -534,7 +554,8 @@ namespace ENCJ_STELLARIS
 	}
 
 	// Set recieve memory area
-	void ENC28J60::SetRXMemoryArea(uint16_t startAddr, uint16_t endAddr)
+	void
+	Driver::SetRXMemoryArea(uint16_t startAddr, uint16_t endAddr)
 	{
 		WRITE_REG(ENC_ERXSTL, startAddr & 0xFF);
 		WRITE_REG(ENC_ERXSTH, (startAddr >> 8) & 0xFFF);
@@ -547,7 +568,8 @@ namespace ENCJ_STELLARIS
 	}
 
 	// Set MAC address
-	void ENC28J60::SetMACAddress(const uint8_t *macAddr)
+	void
+	Driver::SetMACAddress(const uint8_t *macAddr)
 	{
 		WRITE_REG(ENC_MAADR1, macAddr[0]);
 		WRITE_REG(ENC_MAADR2, macAddr[1]);
@@ -558,7 +580,8 @@ namespace ENCJ_STELLARIS
 	}
 
 	// Get MAC address
-	void ENC28J60::GetMACAddress(uint8_t *macAddr)
+	void
+	Driver::GetMACAddress(uint8_t *macAddr)
 	{
 		macAddr[0] = READ_REG(ENC_MAADR1);
 		macAddr[1] = READ_REG(ENC_MAADR2);
@@ -569,7 +592,7 @@ namespace ENCJ_STELLARIS
 	}
 
 	void*
-	ENC28J60::GetUserData() {
+	Driver::GetUserData() {
 		return userData;
 	}
 

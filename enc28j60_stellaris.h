@@ -1,13 +1,15 @@
 /*
  * ENC28J60 configuration specific to the Stellaris Launchpad.
- * Provides implementation of the BusDriver methods for a single ENC28J60.
+ * Provides implementation of the Glue methods for a single ENC28J60.
  */
 #ifndef _ENC28J60_STELLARIS
 #define _ENC28J60_STELLARIS
 
 #include "common.h"
 
-class StellarisENC28J60DefaultConfiguration {
+namespace ENC28J60 {
+
+class StellarisConfig {
 public:
 	/* SPI Pin Configuration */
 	static const int SPI_PORT_BASE		= GPIO_PORTB_BASE;
@@ -32,5 +34,5 @@ public:
 	static const int PIN_INT_INT		= INT_GPIOE;
 };
 
-typedef StellarisENC28J60DefaultConfiguration StellarisENC28J60Configuration;
+}
 #endif

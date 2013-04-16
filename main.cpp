@@ -86,7 +86,7 @@ static void uart_init(void) {
 	UARTStdioInitExpClk(0, 115200);
 }
 
-ENCJ_STELLARIS::ENC28J60 chip;
+ENC28J60::Driver chip;
 
 int main(void) {
 	static struct uip_eth_addr eth_addr;
