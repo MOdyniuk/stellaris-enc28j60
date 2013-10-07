@@ -14,10 +14,6 @@
 #include <stdint.h>
 #include "enc28j60reg.h"
 
-/* Last thing we need to get rid of: UARTprintf */
-extern "C" void UARTprintf(const char *pcString, ...);
-#define printf UARTprintf
-
 namespace ENC28J60
 {
 	typedef enum {
